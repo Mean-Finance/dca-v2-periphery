@@ -175,12 +175,6 @@ interface IDCAFeeManager is IGovernable {
   function setAccess(UserAccess[] calldata access) external;
 
   /**
-   * @notice Sets the maximum allowance to the DCA Hub, for the given token
-   * @param token The token to set the allowance for
-   */
-  function resetAllowance(IERC20 token) external;
-
-  /**
    * @notice Returns how much is available for withdraw, for the given tokens
    * @dev This is meant for off-chan purposes
    * @param tokens The tokens to check the balance for

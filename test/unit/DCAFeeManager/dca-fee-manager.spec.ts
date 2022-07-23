@@ -200,9 +200,24 @@ contract('DCAFeeManager', () => {
         expect(erc20Token.approve).to.have.been.calledOnceWith(DCAHub.address, constants.MaxUint256);
       });
     });
+    when('allowance is not zero but less than needed', () => {
+      given(async () => {
+        erc20Token.allowance.returns(1);
+        await DCAFeeManager.connect(governor).fillPositions(
+          [{ token: erc20Token.address, amount: FULL_AMOUNT, amountOfSwaps: AMOUNT_OF_SWAPS }],
+          DISTRIBUTION
+        );
+      });
+      then('allowance is reset', () => {
+        expect(erc20Token.approve).to.have.been.calledTwice;
+        expect(erc20Token.approve).to.have.been.calledWith(DCAHub.address, 0);
+        expect(erc20Token.approve).to.have.been.calledWith(DCAHub.address, constants.MaxUint256);
+      });
+    });
     when('there is no position created', () => {
       describe('and deposit fails', () => {
         given(async () => {
+          erc20Token.allowance.returns(constants.MaxUint256);
           DCAHub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'].revertsAtCall(0);
           DCAHub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'].returnsAtCall(1, POSITION_ID_TOKEN_B);
           await DCAFeeManager.connect(governor).fillPositions(
@@ -229,6 +244,9 @@ contract('DCAFeeManager', () => {
         then('position is stored for the to token', async () => {
           const positions = await DCAFeeManager.positionsWithToken(TOKEN_B);
           expect(positions).to.eql([BigNumber.from(POSITION_ID_TOKEN_B)]);
+        });
+        then('allowance is not set', () => {
+          expect(erc20Token.approve).to.not.have.been.called;
         });
       });
       describe('and deposit works', () => {
@@ -408,19 +426,6 @@ contract('DCAFeeManager', () => {
       funcAndSignature: 'setAccess',
       params: () => [[{ user: random.address, access: true }]],
       governor: () => governor,
-    });
-  });
-
-  describe('resetAllowance', () => {
-    when('function is executed', () => {
-      given(async () => {
-        await DCAFeeManager.resetAllowance(erc20Token.address);
-      });
-      then('allowance is reset', async () => {
-        expect(erc20Token.approve).to.have.been.calledTwice;
-        expect(erc20Token.approve).to.have.been.calledWith(DCAHub.address, 0);
-        expect(erc20Token.approve).to.have.been.calledWith(DCAHub.address, constants.MaxUint256);
-      });
     });
   });
 

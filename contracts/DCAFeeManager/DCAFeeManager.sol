@@ -70,7 +70,11 @@ contract DCAFeeManager is Governable, Multicall, IDCAFeeManager {
     for (uint256 i; i < _amounts.length; i++) {
       AmountToFill memory _amount = _amounts[i];
 
-      if (IERC20(_amount.token).allowance(address(this), address(hub)) == 0) {
+      uint256 _allowance = IERC20(_amount.token).allowance(address(this), address(hub));
+      if (_allowance < _amount.amount) {
+        if (_allowance > 0) {
+          IERC20(_amount.token).approve(address(hub), 0); // We do this first because some tokens (like USDT) will fail if we don't
+        }
         // Approve the token so that the hub can take the funds
         IERC20(_amount.token).approve(address(hub), type(uint256).max);
       }
@@ -106,12 +110,6 @@ contract DCAFeeManager is Governable, Multicall, IDCAFeeManager {
       hasAccess[_access[i].user] = _access[i].access;
     }
     emit NewAccess(_access);
-  }
-
-  /// @inheritdoc IDCAFeeManager
-  function resetAllowance(IERC20 _token) external {
-    _token.approve(address(hub), 0); // We do this first because some tokens (like USDT) will fail if we  don't
-    _token.approve(address(hub), type(uint256).max);
   }
 
   /// @inheritdoc IDCAFeeManager
