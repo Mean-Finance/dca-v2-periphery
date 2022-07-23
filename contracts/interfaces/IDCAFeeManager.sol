@@ -172,10 +172,15 @@ interface IDCAFeeManager is IGovernable {
    *         sent to the given recipient. This is meant to be used only if for some reason swaps are
    *         no longer executed
    * @dev Can only be executed by the owner or allowed users
+   * @param hub The address of the DCA Hub
    * @param positionIds The positions to terminate
    * @param recipient The address that will receive all swapped and unswapped tokens
    */
-  function terminatePositions(uint256[] calldata positionIds, address recipient) external;
+  function terminatePositions(
+    IDCAHub hub,
+    uint256[] calldata positionIds,
+    address recipient
+  ) external;
 
   /**
    * @notice Gives or takes access to permissioned actions from users

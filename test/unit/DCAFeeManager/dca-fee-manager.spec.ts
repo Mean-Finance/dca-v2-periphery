@@ -368,7 +368,7 @@ contract('DCAFeeManager', () => {
         }));
         await DCAFeeManager.setPosition(erc20Token.address, TOKEN_A, 1);
         await DCAFeeManager.setPosition(erc20Token.address, TOKEN_B, 2);
-        await DCAFeeManager.connect(governor).terminatePositions(POSITION_IDS, RECIPIENT);
+        await DCAFeeManager.connect(governor).terminatePositions(DCAHub.address, POSITION_IDS, RECIPIENT);
       });
       then('position 1 is terminated and deleted from fee manager', async () => {
         expect(DCAHub.terminate).to.have.been.calledWith(1, RECIPIENT, RECIPIENT);
@@ -386,7 +386,7 @@ contract('DCAFeeManager', () => {
     });
     shouldOnlyBeExecutableByGovernorOrAllowed({
       funcAndSignature: 'terminatePositions',
-      params: [[], RECIPIENT],
+      params: () => [DCAHub.address, [], RECIPIENT],
     });
   });
 
