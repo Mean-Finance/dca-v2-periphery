@@ -141,7 +141,7 @@ contract('DCAFeeManager', () => {
     when('withdraw is executed', () => {
       const POSITION_SETS = [{ token: TOKEN_A, positionIds: [1, 2, 3] }];
       given(async () => {
-        await DCAFeeManager.connect(governor).withdrawFromPositions(POSITION_SETS, RECIPIENT);
+        await DCAFeeManager.connect(governor).withdrawFromPositions(DCAHub.address, POSITION_SETS, RECIPIENT);
       });
       then('hub is called correctly', () => {
         expect(DCAHub.withdrawSwappedMany).to.have.been.calledOnce;
@@ -152,7 +152,7 @@ contract('DCAFeeManager', () => {
     });
     shouldOnlyBeExecutableByGovernorOrAllowed({
       funcAndSignature: 'withdrawFromPositions',
-      params: [[], RECIPIENT],
+      params: () => [DCAHub.address, [], RECIPIENT],
     });
   });
 

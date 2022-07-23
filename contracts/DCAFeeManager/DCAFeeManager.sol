@@ -56,8 +56,12 @@ contract DCAFeeManager is Governable, Multicall, IDCAFeeManager {
   }
 
   /// @inheritdoc IDCAFeeManager
-  function withdrawFromPositions(IDCAHub.PositionSet[] calldata _positionSets, address _recipient) external onlyOwnerOrAllowed {
-    hub.withdrawSwappedMany(_positionSets, _recipient);
+  function withdrawFromPositions(
+    IDCAHub _hub,
+    IDCAHub.PositionSet[] calldata _positionSets,
+    address _recipient
+  ) external onlyOwnerOrAllowed {
+    _hub.withdrawSwappedMany(_positionSets, _recipient);
   }
 
   /// @inheritdoc IDCAFeeManager

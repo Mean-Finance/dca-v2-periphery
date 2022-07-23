@@ -145,6 +145,7 @@ contract('DCAFeeManager', () => {
       DCAFeeManager.address
     );
     const { data: withdrawPositionsData } = await DCAFeeManager.populateTransaction.withdrawFromPositions(
+      DCAHub.address,
       [{ token: WETH.address, positionIds: [position1.positionId, position2.positionId] }],
       DCAFeeManager.address
     );

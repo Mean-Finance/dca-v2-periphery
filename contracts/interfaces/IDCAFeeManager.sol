@@ -135,10 +135,15 @@ interface IDCAFeeManager is IGovernable {
   /**
    * @notice Withdraws tokens from the given positions, and sends them to the given recipient
    * @dev Can only be executed by the owner or allowed users
+   * @param hub The address of the DCA Hub
    * @param positionSets The positions to withdraw from
    * @param recipient The address of the recipient
    */
-  function withdrawFromPositions(IDCAHub.PositionSet[] calldata positionSets, address recipient) external;
+  function withdrawFromPositions(
+    IDCAHub hub,
+    IDCAHub.PositionSet[] calldata positionSets,
+    address recipient
+  ) external;
 
   /**
    * @notice Withdraws protocol tokens and sends them to the given recipient
