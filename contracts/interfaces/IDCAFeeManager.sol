@@ -114,10 +114,15 @@ interface IDCAFeeManager is IGovernable {
   /**
    * @notice Withdraws tokens from the platform balance, and sends them to the given recipient
    * @dev Can only be executed by the owner or allowed users
+   * @param hub The address of the DCA Hub
    * @param amountToWithdraw The tokens to withdraw, and their amounts
    * @param recipient The address of the recipient
    */
-  function withdrawFromPlatformBalance(IDCAHub.AmountOfToken[] calldata amountToWithdraw, address recipient) external;
+  function withdrawFromPlatformBalance(
+    IDCAHub hub,
+    IDCAHub.AmountOfToken[] calldata amountToWithdraw,
+    address recipient
+  ) external;
 
   /**
    * @notice Withdraws tokens from the contract's balance, and sends them to the given recipient

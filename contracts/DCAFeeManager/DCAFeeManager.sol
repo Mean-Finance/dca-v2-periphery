@@ -40,8 +40,12 @@ contract DCAFeeManager is Governable, Multicall, IDCAFeeManager {
   }
 
   /// @inheritdoc IDCAFeeManager
-  function withdrawFromPlatformBalance(IDCAHub.AmountOfToken[] calldata _amountToWithdraw, address _recipient) external onlyOwnerOrAllowed {
-    hub.withdrawFromPlatformBalance(_amountToWithdraw, _recipient);
+  function withdrawFromPlatformBalance(
+    IDCAHub _hub,
+    IDCAHub.AmountOfToken[] calldata _amountToWithdraw,
+    address _recipient
+  ) external onlyOwnerOrAllowed {
+    _hub.withdrawFromPlatformBalance(_amountToWithdraw, _recipient);
   }
 
   /// @inheritdoc IDCAFeeManager

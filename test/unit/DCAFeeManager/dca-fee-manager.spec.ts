@@ -103,7 +103,7 @@ contract('DCAFeeManager', () => {
     when('withdraw is executed', () => {
       const AMOUNT_TO_WITHDRAW = [{ token: TOKEN_A, amount: utils.parseEther('1') }];
       given(async () => {
-        await DCAFeeManager.connect(governor).withdrawFromPlatformBalance(AMOUNT_TO_WITHDRAW, RECIPIENT);
+        await DCAFeeManager.connect(governor).withdrawFromPlatformBalance(DCAHub.address, AMOUNT_TO_WITHDRAW, RECIPIENT);
       });
       then('hub is called correctly', () => {
         expect(DCAHub.withdrawFromPlatformBalance).to.have.been.calledOnce;
@@ -114,7 +114,7 @@ contract('DCAFeeManager', () => {
     });
     shouldOnlyBeExecutableByGovernorOrAllowed({
       funcAndSignature: 'withdrawFromPlatformBalance',
-      params: [[], RECIPIENT],
+      params: () => [DCAHub.address, [], RECIPIENT],
     });
   });
 

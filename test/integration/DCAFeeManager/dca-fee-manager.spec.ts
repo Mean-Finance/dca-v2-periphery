@@ -103,6 +103,7 @@ contract('DCAFeeManager', () => {
 
     // Prepare data to withdraw USDC from platform balance
     const { data: withdrawData } = await DCAFeeManager.populateTransaction.withdrawFromPlatformBalance(
+      DCAHub.address,
       [{ token: USDC.address, amount: usdcBalance.platformBalance }],
       DCAFeeManager.address
     );
@@ -139,6 +140,7 @@ contract('DCAFeeManager', () => {
     // Execute withdraw as protocol token
     const total = wethBalance.platformBalance.add(wethBalance.positions[0].swapped).add(wethBalance.positions[1].swapped);
     const { data: withdrawPlatformBalanceData } = await DCAFeeManager.populateTransaction.withdrawFromPlatformBalance(
+      DCAHub.address,
       [{ token: WETH.address, amount: wethBalance.platformBalance }],
       DCAFeeManager.address
     );
