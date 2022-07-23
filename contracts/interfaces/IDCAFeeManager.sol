@@ -76,13 +76,6 @@ interface IDCAFeeManager is IGovernable {
   function SWAP_INTERVAL() external view returns (uint32);
 
   /**
-   * @notice Returns address for the DCA Hub
-   * @dev This value cannot be modified after deployment
-   * @return The address for the DCA Hub
-   */
-  function hub() external view returns (IDCAHub);
-
-  /**
    * @notice Returns address for the wToken
    * @dev This value cannot be modified after deployment
    * @return The address for the wToken

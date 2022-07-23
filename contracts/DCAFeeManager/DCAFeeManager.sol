@@ -15,8 +15,6 @@ contract DCAFeeManager is Governable, Multicall, IDCAFeeManager {
   /// @inheritdoc IDCAFeeManager
   uint32 public constant SWAP_INTERVAL = 1 days;
   /// @inheritdoc IDCAFeeManager
-  IDCAHub public immutable hub;
-  /// @inheritdoc IDCAFeeManager
   IWrappedProtocolToken public immutable wToken;
   /// @inheritdoc IDCAFeeManager
   mapping(address => bool) public hasAccess;
@@ -25,12 +23,7 @@ contract DCAFeeManager is Governable, Multicall, IDCAFeeManager {
 
   mapping(address => uint256[]) internal _positionsWithToken; // token address => all positions with address as to
 
-  constructor(
-    IDCAHub _hub,
-    IWrappedProtocolToken _wToken,
-    address _governor
-  ) Governable(_governor) {
-    hub = _hub;
+  constructor(IWrappedProtocolToken _wToken, address _governor) Governable(_governor) {
     wToken = _wToken;
   }
 

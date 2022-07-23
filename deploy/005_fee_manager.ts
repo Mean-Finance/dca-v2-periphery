@@ -34,8 +34,6 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
       throw new Error(`Unsupported chain '${hre.network.name}`);
   }
 
-  const hub = await hre.deployments.get('DCAHub');
-
   await deployThroughDeterministicFactory({
     deployer,
     name: 'DCAFeeManager',
@@ -43,8 +41,8 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     contract: 'contracts/DCAFeeManager/DCAFeeManager.sol:DCAFeeManager',
     bytecode: DCAFeeManager__factory.bytecode,
     constructorArgs: {
-      types: ['address', 'address', 'address'],
-      values: [hub.address, wProtocolToken, governor],
+      types: ['address', 'address'],
+      values: [wProtocolToken, governor],
     },
     log: !process.env.TEST,
   });

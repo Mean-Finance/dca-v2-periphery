@@ -45,7 +45,7 @@ contract('DCAFeeManager', () => {
     wToken = await wTokenFactory.deploy('WETH', 'WETH', 18);
     await setProtocolBalance(wToken, utils.parseEther('100'));
     DCAFeeManagerFactory = await ethers.getContractFactory('contracts/mocks/DCAFeeManager/DCAFeeManager.sol:DCAFeeManagerMock');
-    DCAFeeManager = await DCAFeeManagerFactory.deploy(DCAHub.address, wToken.address, governor.address);
+    DCAFeeManager = await DCAFeeManagerFactory.deploy(wToken.address, governor.address);
     snapshotId = await snapshot.take();
   });
 
@@ -64,9 +64,6 @@ contract('DCAFeeManager', () => {
 
   describe('constructor', () => {
     when('contract is initiated', () => {
-      then('hub is set correctly', async () => {
-        expect(await DCAFeeManager.hub()).to.equal(DCAHub.address);
-      });
       then('max token total share is set correctly', async () => {
         expect(await DCAFeeManager.MAX_TOKEN_TOTAL_SHARE()).to.equal(MAX_SHARES);
       });
