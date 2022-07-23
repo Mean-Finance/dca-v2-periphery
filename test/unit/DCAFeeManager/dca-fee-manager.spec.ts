@@ -32,11 +32,12 @@ contract('DCAFeeManager', () => {
   let DCAFeeManager: DCAFeeManagerMock;
   let DCAFeeManagerFactory: DCAFeeManagerMock__factory;
   let erc20Token: FakeContract<IERC20>;
-  let random: SignerWithAddress, governor: SignerWithAddress;
+  let random: SignerWithAddress, superAdmin: SignerWithAddress, admin: SignerWithAddress;
+  let superAdminRole: string, adminRole: string;
   let snapshotId: string;
 
   before('Setup accounts and contracts', async () => {
-    [random, governor] = await ethers.getSigners();
+    [random, superAdmin, admin] = await ethers.getSigners();
     const wTokenFactory: WrappedPlatformTokenMock__factory = await ethers.getContractFactory(
       'contracts/mocks/WrappedPlatformTokenMock.sol:WrappedPlatformTokenMock'
     );
@@ -45,7 +46,9 @@ contract('DCAFeeManager', () => {
     wToken = await wTokenFactory.deploy('WETH', 'WETH', 18);
     await setProtocolBalance(wToken, utils.parseEther('100'));
     DCAFeeManagerFactory = await ethers.getContractFactory('contracts/mocks/DCAFeeManager/DCAFeeManager.sol:DCAFeeManagerMock');
-    DCAFeeManager = await DCAFeeManagerFactory.deploy(wToken.address, governor.address);
+    DCAFeeManager = await DCAFeeManagerFactory.deploy(wToken.address, superAdmin.address, [admin.address]);
+    superAdminRole = await DCAFeeManager.SUPER_ADMIN_ROLE();
+    adminRole = await DCAFeeManager.ADMIN_ROLE();
     snapshotId = await snapshot.take();
   });
 
@@ -63,7 +66,28 @@ contract('DCAFeeManager', () => {
   });
 
   describe('constructor', () => {
+    when('super admin is zero address', () => {
+      then('tx is reverted with reason error', async () => {
+        await behaviours.deployShouldRevertWithMessage({
+          contract: DCAFeeManagerFactory,
+          args: [wToken.address, constants.AddressZero, []],
+          message: 'ZeroAddress',
+        });
+      });
+    });
     when('contract is initiated', () => {
+      then('super admin is set correctly', async () => {
+        const hasRole = await DCAFeeManager.hasRole(superAdminRole, superAdmin.address);
+        expect(hasRole).to.be.true;
+      });
+      then('initial admins are set correctly', async () => {
+        const hasRole = await DCAFeeManager.hasRole(adminRole, admin.address);
+        expect(hasRole).to.be.true;
+      });
+      then('super admin role is set as admin role', async () => {
+        const admin = await DCAFeeManager.getRoleAdmin(adminRole);
+        expect(admin).to.equal(superAdminRole);
+      });
       then('max token total share is set correctly', async () => {
         expect(await DCAFeeManager.MAX_TOKEN_TOTAL_SHARE()).to.equal(MAX_SHARES);
       });
@@ -82,16 +106,19 @@ contract('DCAFeeManager', () => {
     when('unwrap is called', () => {
       given(async () => {
         await wToken.mint(DCAFeeManager.address, TOTAL_BALANCE);
-        await DCAFeeManager.connect(governor).unwrapWToken(BALANCE_TO_UNWRAP);
+        await DCAFeeManager.connect(admin).unwrapWToken(BALANCE_TO_UNWRAP);
       });
       then('given balance is unwrapped', async () => {
         expect(await wToken.balanceOf(DCAFeeManager.address)).to.equal(TOTAL_BALANCE.sub(BALANCE_TO_UNWRAP));
         expect(await getProtocolBalance(DCAFeeManager.address)).to.equal(BALANCE_TO_UNWRAP);
       });
     });
-    shouldOnlyBeExecutableByGovernorOrAllowed({
+    behaviours.shouldBeExecutableOnlyByRole({
+      contract: () => DCAFeeManager,
       funcAndSignature: 'unwrapWToken',
       params: [BALANCE_TO_UNWRAP],
+      addressWithRole: () => admin,
+      role: () => adminRole,
     });
   });
 
@@ -100,7 +127,7 @@ contract('DCAFeeManager', () => {
     when('withdraw is executed', () => {
       const AMOUNT_TO_WITHDRAW = [{ token: TOKEN_A, amount: utils.parseEther('1') }];
       given(async () => {
-        await DCAFeeManager.connect(governor).withdrawFromPlatformBalance(DCAHub.address, AMOUNT_TO_WITHDRAW, RECIPIENT);
+        await DCAFeeManager.connect(admin).withdrawFromPlatformBalance(DCAHub.address, AMOUNT_TO_WITHDRAW, RECIPIENT);
       });
       then('hub is called correctly', () => {
         expect(DCAHub.withdrawFromPlatformBalance).to.have.been.calledOnce;
@@ -109,9 +136,12 @@ contract('DCAFeeManager', () => {
         expect(recipient).to.equal(RECIPIENT);
       });
     });
-    shouldOnlyBeExecutableByGovernorOrAllowed({
+    behaviours.shouldBeExecutableOnlyByRole({
+      contract: () => DCAFeeManager,
       funcAndSignature: 'withdrawFromPlatformBalance',
       params: () => [DCAHub.address, [], RECIPIENT],
+      addressWithRole: () => admin,
+      role: () => adminRole,
     });
   });
 
@@ -121,15 +151,18 @@ contract('DCAFeeManager', () => {
       const AMOUNT_TO_WITHDRAW = utils.parseEther('1');
       given(async () => {
         erc20Token.transfer.returns(true);
-        await DCAFeeManager.connect(governor).withdrawFromBalance([{ token: erc20Token.address, amount: AMOUNT_TO_WITHDRAW }], RECIPIENT);
+        await DCAFeeManager.connect(admin).withdrawFromBalance([{ token: erc20Token.address, amount: AMOUNT_TO_WITHDRAW }], RECIPIENT);
       });
       then('token is called correctly', () => {
         expect(erc20Token.transfer).to.have.been.calledOnceWith(RECIPIENT, AMOUNT_TO_WITHDRAW);
       });
     });
-    shouldOnlyBeExecutableByGovernorOrAllowed({
+    behaviours.shouldBeExecutableOnlyByRole({
+      contract: () => DCAFeeManager,
       funcAndSignature: 'withdrawFromBalance',
       params: [[], RECIPIENT],
+      addressWithRole: () => admin,
+      role: () => adminRole,
     });
   });
 
@@ -138,7 +171,7 @@ contract('DCAFeeManager', () => {
     when('withdraw is executed', () => {
       const POSITION_SETS = [{ token: TOKEN_A, positionIds: [1, 2, 3] }];
       given(async () => {
-        await DCAFeeManager.connect(governor).withdrawFromPositions(DCAHub.address, POSITION_SETS, RECIPIENT);
+        await DCAFeeManager.connect(admin).withdrawFromPositions(DCAHub.address, POSITION_SETS, RECIPIENT);
       });
       then('hub is called correctly', () => {
         expect(DCAHub.withdrawSwappedMany).to.have.been.calledOnce;
@@ -147,9 +180,12 @@ contract('DCAFeeManager', () => {
         expect(recipient).to.equal(RECIPIENT);
       });
     });
-    shouldOnlyBeExecutableByGovernorOrAllowed({
+    behaviours.shouldBeExecutableOnlyByRole({
+      contract: () => DCAFeeManager,
       funcAndSignature: 'withdrawFromPositions',
       params: () => [DCAHub.address, [], RECIPIENT],
+      addressWithRole: () => admin,
+      role: () => adminRole,
     });
   });
 
@@ -160,8 +196,8 @@ contract('DCAFeeManager', () => {
     when('unwrap is called', () => {
       given(async () => {
         await wToken.mint(DCAFeeManager.address, TOTAL_BALANCE);
-        await DCAFeeManager.connect(governor).unwrapWToken(TOTAL_BALANCE);
-        await DCAFeeManager.connect(governor).withdrawProtocolToken(BALANCE_TO_WITHDRAW, RECIPIENT);
+        await DCAFeeManager.connect(admin).unwrapWToken(TOTAL_BALANCE);
+        await DCAFeeManager.connect(admin).withdrawProtocolToken(BALANCE_TO_WITHDRAW, RECIPIENT);
       });
       then('amount to withdraw is sent to recipient', async () => {
         expect(await getProtocolBalance(RECIPIENT)).to.equal(BALANCE_TO_WITHDRAW);
@@ -170,9 +206,12 @@ contract('DCAFeeManager', () => {
         expect(await getProtocolBalance(DCAFeeManager.address)).to.equal(TOTAL_BALANCE.sub(BALANCE_TO_WITHDRAW));
       });
     });
-    shouldOnlyBeExecutableByGovernorOrAllowed({
+    behaviours.shouldBeExecutableOnlyByRole({
+      contract: () => DCAFeeManager,
       funcAndSignature: 'withdrawProtocolToken',
       params: [BALANCE_TO_WITHDRAW, RECIPIENT],
+      addressWithRole: () => admin,
+      role: () => adminRole,
     });
   });
 
@@ -188,7 +227,7 @@ contract('DCAFeeManager', () => {
     when('allowance is zero', () => {
       given(async () => {
         erc20Token.allowance.returns(0);
-        await DCAFeeManager.connect(governor).fillPositions(
+        await DCAFeeManager.connect(admin).fillPositions(
           DCAHub.address,
           [{ token: erc20Token.address, amount: FULL_AMOUNT, amountOfSwaps: AMOUNT_OF_SWAPS }],
           DISTRIBUTION
@@ -201,7 +240,7 @@ contract('DCAFeeManager', () => {
     when('allowance is not zero but less than needed', () => {
       given(async () => {
         erc20Token.allowance.returns(1);
-        await DCAFeeManager.connect(governor).fillPositions(
+        await DCAFeeManager.connect(admin).fillPositions(
           DCAHub.address,
           [{ token: erc20Token.address, amount: FULL_AMOUNT, amountOfSwaps: AMOUNT_OF_SWAPS }],
           DISTRIBUTION
@@ -219,7 +258,7 @@ contract('DCAFeeManager', () => {
           erc20Token.allowance.returns(constants.MaxUint256);
           DCAHub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'].revertsAtCall(0);
           DCAHub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'].returnsAtCall(1, POSITION_ID_TOKEN_B);
-          await DCAFeeManager.connect(governor).fillPositions(
+          await DCAFeeManager.connect(admin).fillPositions(
             DCAHub.address,
             [{ token: erc20Token.address, amount: FULL_AMOUNT, amountOfSwaps: AMOUNT_OF_SWAPS }],
             DISTRIBUTION
@@ -253,7 +292,7 @@ contract('DCAFeeManager', () => {
         given(async () => {
           DCAHub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'].returnsAtCall(0, POSITION_ID_TOKEN_A);
           DCAHub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'].returnsAtCall(1, POSITION_ID_TOKEN_B);
-          await DCAFeeManager.connect(governor).fillPositions(
+          await DCAFeeManager.connect(admin).fillPositions(
             DCAHub.address,
             [{ token: erc20Token.address, amount: FULL_AMOUNT, amountOfSwaps: AMOUNT_OF_SWAPS }],
             DISTRIBUTION
@@ -311,7 +350,7 @@ contract('DCAFeeManager', () => {
       describe('and increase fails', () => {
         given(async () => {
           DCAHub.increasePosition.revertsAtCall(0);
-          await DCAFeeManager.connect(governor).fillPositions(
+          await DCAFeeManager.connect(admin).fillPositions(
             DCAHub.address,
             [{ token: erc20Token.address, amount: FULL_AMOUNT, amountOfSwaps: AMOUNT_OF_SWAPS }],
             DISTRIBUTION
@@ -324,7 +363,7 @@ contract('DCAFeeManager', () => {
       });
       describe('and increase works', () => {
         given(async () => {
-          await DCAFeeManager.connect(governor).fillPositions(
+          await DCAFeeManager.connect(admin).fillPositions(
             DCAHub.address,
             [{ token: erc20Token.address, amount: FULL_AMOUNT, amountOfSwaps: AMOUNT_OF_SWAPS }],
             DISTRIBUTION
@@ -341,10 +380,12 @@ contract('DCAFeeManager', () => {
         });
       });
     });
-
-    shouldOnlyBeExecutableByGovernorOrAllowed({
+    behaviours.shouldBeExecutableOnlyByRole({
+      contract: () => DCAFeeManager,
       funcAndSignature: 'fillPositions',
       params: () => [DCAHub.address, [{ token: erc20Token.address, amount: FULL_AMOUNT, amountOfSwaps: AMOUNT_OF_SWAPS }], DISTRIBUTION],
+      addressWithRole: () => admin,
+      role: () => adminRole,
     });
   });
 
@@ -365,7 +406,7 @@ contract('DCAFeeManager', () => {
         }));
         await DCAFeeManager.setPosition(erc20Token.address, TOKEN_A, 1);
         await DCAFeeManager.setPosition(erc20Token.address, TOKEN_B, 2);
-        await DCAFeeManager.connect(governor).terminatePositions(DCAHub.address, POSITION_IDS, RECIPIENT);
+        await DCAFeeManager.connect(admin).terminatePositions(DCAHub.address, POSITION_IDS, RECIPIENT);
       });
       then('position 1 is terminated and deleted from fee manager', async () => {
         expect(DCAHub.terminate).to.have.been.calledWith(1, RECIPIENT, RECIPIENT);
@@ -381,54 +422,12 @@ contract('DCAFeeManager', () => {
         expect(DCAHub.terminate).to.have.been.calledTwice;
       });
     });
-    shouldOnlyBeExecutableByGovernorOrAllowed({
+    behaviours.shouldBeExecutableOnlyByRole({
+      contract: () => DCAFeeManager,
       funcAndSignature: 'terminatePositions',
       params: () => [DCAHub.address, [], RECIPIENT],
-    });
-  });
-
-  describe('setAccess', () => {
-    const USER = wallet.generateRandomAddress();
-    when('giving access to a user', () => {
-      let tx: TransactionResponse;
-      given(async () => {
-        tx = await DCAFeeManager.connect(governor).setAccess([{ user: USER, access: true }]);
-      });
-      then('user has access', async () => {
-        expect(await DCAFeeManager.hasAccess(USER)).to.be.true;
-      });
-      then('event is emitted', async () => {
-        await expect(tx).to.emit(DCAFeeManager, 'NewAccess');
-        // Can't compare array of objects directly, so will read the arg and compare manually
-        const access: IDCAFeeManager.UserAccessStruct[] = await readArgFromEventOrFail(tx, 'NewAccess', 'access');
-        expect(access).to.have.lengthOf(1);
-        expect(access[0].user).to.equal(USER);
-        expect(access[0].access).to.equal(true);
-      });
-    });
-    when('taking access from a user', () => {
-      let tx: TransactionResponse;
-      given(async () => {
-        await DCAFeeManager.connect(governor).setAccess([{ user: USER, access: true }]);
-        tx = await DCAFeeManager.connect(governor).setAccess([{ user: USER, access: false }]);
-      });
-      then('user lost access', async () => {
-        expect(await DCAFeeManager.hasAccess(USER)).to.be.false;
-      });
-      then('event is emitted', async () => {
-        await expect(tx).to.emit(DCAFeeManager, 'NewAccess');
-        // Can't compare array of objects directly, so will read the arg and compare manually
-        const access: IDCAFeeManager.UserAccessStruct[] = await readArgFromEventOrFail(tx, 'NewAccess', 'access');
-        expect(access).to.have.lengthOf(1);
-        expect(access[0].user).to.equal(USER);
-        expect(access[0].access).to.equal(false);
-      });
-    });
-    behaviours.shouldBeExecutableOnlyByGovernor({
-      contract: () => DCAFeeManager,
-      funcAndSignature: 'setAccess',
-      params: () => [[{ user: random.address, access: true }]],
-      governor: () => governor,
+      addressWithRole: () => admin,
+      role: () => adminRole,
     });
   });
 
@@ -482,48 +481,6 @@ contract('DCAFeeManager', () => {
       };
     }
   });
-
-  function shouldOnlyBeExecutableByGovernorOrAllowed({
-    funcAndSignature,
-    params,
-  }: {
-    funcAndSignature: string;
-    params?: any[] | (() => any[]);
-  }) {
-    let realParams: any[];
-    given(() => {
-      realParams = typeof params === 'function' ? params() : params ?? [];
-    });
-    when('called from allowed', () => {
-      let onlyAllowed: Promise<TransactionResponse>;
-      given(async () => {
-        await DCAFeeManager.connect(governor).setAccess([{ user: random.address, access: true }]);
-        onlyAllowed = (DCAFeeManager as any).connect(random)[funcAndSignature](...realParams!);
-      });
-      then(`tx is not reverted or not reverted with reason 'CallerMustBeOwnerOrHaveAccess'`, async () => {
-        await expect(onlyAllowed).to.not.be.revertedWith('CallerMustBeOwnerOrHaveAccess');
-      });
-    });
-    when('called by governor', () => {
-      let onlyGovernor: Promise<TransactionResponse>;
-      given(async () => {
-        onlyGovernor = (DCAFeeManager as any).connect(governor)[funcAndSignature](...realParams!);
-      });
-      then(`tx is not reverted or not reverted with reason 'CallerMustBeOwnerOrHaveAccess'`, async () => {
-        await expect(onlyGovernor).to.not.be.revertedWith('CallerMustBeOwnerOrHaveAccess');
-      });
-    });
-    when('not called from allowed or governor', () => {
-      let onlyGovernorAllowedTx: Promise<TransactionResponse>;
-      given(async () => {
-        const notAllowed = await wallet.generateRandom();
-        onlyGovernorAllowedTx = (DCAFeeManager as any).connect(notAllowed)[funcAndSignature](...realParams!);
-      });
-      then('tx is reverted with reason', async () => {
-        await expect(onlyGovernorAllowedTx).to.be.revertedWith('CallerMustBeOwnerOrHaveAccess');
-      });
-    });
-  }
 
   function getProtocolBalance(address: string) {
     return ethers.provider.getBalance(address);
