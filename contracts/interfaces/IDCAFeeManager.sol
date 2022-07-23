@@ -192,8 +192,9 @@ interface IDCAFeeManager is IGovernable {
   /**
    * @notice Returns how much is available for withdraw, for the given tokens
    * @dev This is meant for off-chan purposes
+   * @param hub The address of the DCA Hub
    * @param tokens The tokens to check the balance for
    * @return How much is available for withdraw, for the given tokens
    */
-  function availableBalances(address[] calldata tokens) external view returns (AvailableBalance[] memory);
+  function availableBalances(IDCAHub hub, address[] calldata tokens) external view returns (AvailableBalance[] memory);
 }

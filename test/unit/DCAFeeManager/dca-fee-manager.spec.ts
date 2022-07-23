@@ -449,7 +449,7 @@ contract('DCAFeeManager', () => {
         await DCAFeeManager.setPositionsWithToken(erc20Token.address, [1, 2]);
       });
       then('balances are returned correctly', async () => {
-        const balances = await DCAFeeManager.availableBalances([erc20Token.address]);
+        const balances = await DCAFeeManager.availableBalances(DCAHub.address, [erc20Token.address]);
         expect(balances).to.have.lengthOf(1);
         expect(balances[0].token).to.equal(erc20Token.address);
         expect(balances[0].platformBalance).to.equal(PLATFORM_BALANCE);
