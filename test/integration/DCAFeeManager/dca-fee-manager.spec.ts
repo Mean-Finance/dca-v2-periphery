@@ -24,7 +24,7 @@ const WBTC_WHALE_ADDRESS = '0x9ff58f4ffb29fa2266ab25e75e2a8b3503311656';
 contract('DCAFeeManager', () => {
   const RECIPIENT = wallet.generateRandomAddress();
   let WETH: IERC20, USDC: IERC20, WBTC: IERC20;
-  let governor: JsonRpcSigner;
+  let superAdmin: JsonRpcSigner;
   let cindy: SignerWithAddress, allowed: SignerWithAddress, swapper: SignerWithAddress;
   let DCAFeeManager: DCAFeeManager;
   let DCAHubSwapper: DCAHubSwapper;
@@ -40,7 +40,7 @@ contract('DCAFeeManager', () => {
 
     const namedAccounts = await getNamedAccounts();
     const governorAddress = namedAccounts.governor;
-    governor = await wallet.impersonate(governorAddress);
+    superAdmin = await wallet.impersonate(governorAddress);
     await ethers.provider.send('hardhat_setBalance', [governorAddress, '0xffffffffffffffff']);
 
     const deterministicFactory = await ethers.getContractAt<DeterministicFactory>(
@@ -48,7 +48,7 @@ contract('DCAFeeManager', () => {
       '0xbb681d77506df5CA21D2214ab3923b4C056aa3e2'
     );
 
-    await deterministicFactory.connect(governor).grantRole(await deterministicFactory.DEPLOYER_ROLE(), namedAccounts.deployer);
+    await deterministicFactory.connect(superAdmin).grantRole(await deterministicFactory.DEPLOYER_ROLE(), namedAccounts.deployer);
 
     await deployments.run(['DCAHub', 'DCAHubSwapper', 'DCAFeeManager'], {
       resetMemory: true,
@@ -61,9 +61,9 @@ contract('DCAFeeManager', () => {
     DCAFeeManager = await ethers.getContract('DCAFeeManager');
 
     // Set up tokens and permissions
-    await DCAHub.connect(governor).setAllowedTokens([WETH_ADDRESS, USDC_ADDRESS, WBTC_ADDRESS], [true, true, true]);
-    await DCAHub.connect(governor).grantRole(await DCAHub.PLATFORM_WITHDRAW_ROLE(), DCAFeeManager.address);
-    await DCAFeeManager.connect(governor).setAccess([{ user: allowed.address, access: true }]);
+    await DCAHub.connect(superAdmin).setAllowedTokens([WETH_ADDRESS, USDC_ADDRESS, WBTC_ADDRESS], [true, true, true]);
+    await DCAHub.connect(superAdmin).grantRole(await DCAHub.PLATFORM_WITHDRAW_ROLE(), DCAFeeManager.address);
+    await DCAFeeManager.connect(superAdmin).grantRole(await DCAFeeManager.ADMIN_ROLE(), allowed.address);
 
     WETH = await ethers.getContractAt(IERC20_ABI, WETH_ADDRESS);
     USDC = await ethers.getContractAt(IERC20_ABI, USDC_ADDRESS);
