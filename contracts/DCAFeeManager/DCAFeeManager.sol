@@ -70,17 +70,21 @@ contract DCAFeeManager is Governable, Multicall, IDCAFeeManager {
   }
 
   /// @inheritdoc IDCAFeeManager
-  function fillPositions(AmountToFill[] calldata _amounts, TargetTokenShare[] calldata _distribution) external onlyOwnerOrAllowed {
+  function fillPositions(
+    IDCAHub _hub,
+    AmountToFill[] calldata _amounts,
+    TargetTokenShare[] calldata _distribution
+  ) external onlyOwnerOrAllowed {
     for (uint256 i; i < _amounts.length; i++) {
       AmountToFill memory _amount = _amounts[i];
 
-      uint256 _allowance = IERC20(_amount.token).allowance(address(this), address(hub));
+      uint256 _allowance = IERC20(_amount.token).allowance(address(this), address(_hub));
       if (_allowance < _amount.amount) {
         if (_allowance > 0) {
-          IERC20(_amount.token).approve(address(hub), 0); // We do this first because some tokens (like USDT) will fail if we don't
+          IERC20(_amount.token).approve(address(_hub), 0); // We do this first because some tokens (like USDT) will fail if we don't
         }
         // Approve the token so that the hub can take the funds
-        IERC20(_amount.token).approve(address(hub), type(uint256).max);
+        IERC20(_amount.token).approve(address(_hub), type(uint256).max);
       }
 
       // Distribute to different tokens
@@ -90,7 +94,7 @@ contract DCAFeeManager is Governable, Multicall, IDCAFeeManager {
           ? (_amount.amount * _distribution[j].shares) / MAX_TOKEN_TOTAL_SHARE
           : _amount.amount - _amountSpent; // If this is the last token, then assign everything that hasn't been spent. We do this to prevent unspent tokens due to rounding errors
 
-        bool _failed = _depositToHub(_amount.token, _distribution[j].token, _amountToDeposit, _amount.amountOfSwaps);
+        bool _failed = _depositToHub(_hub, _amount.token, _distribution[j].token, _amountToDeposit, _amount.amountOfSwaps);
         if (!_failed) {
           _amountSpent += _amountToDeposit;
         }
@@ -149,6 +153,7 @@ contract DCAFeeManager is Governable, Multicall, IDCAFeeManager {
   receive() external payable {}
 
   function _depositToHub(
+    IDCAHub _hub,
     address _from,
     address _to,
     uint256 _amount,
@@ -163,7 +168,7 @@ contract DCAFeeManager is Governable, Multicall, IDCAFeeManager {
 
     if (_positionId == 0) {
       // If position doesn't exist, then try to create it
-      try hub.deposit(_from, _to, _amount, _amountOfSwaps, SWAP_INTERVAL, address(this), new IDCAPermissionManager.PermissionSet[](0)) returns (
+      try _hub.deposit(_from, _to, _amount, _amountOfSwaps, SWAP_INTERVAL, address(this), new IDCAPermissionManager.PermissionSet[](0)) returns (
         uint256 _newPositionId
       ) {
         positions[_key] = _newPositionId;
@@ -173,7 +178,7 @@ contract DCAFeeManager is Governable, Multicall, IDCAFeeManager {
       }
     } else {
       // If position exists, then try to increase it
-      try hub.increasePosition(_positionId, _amount, _amountOfSwaps) {} catch {
+      try _hub.increasePosition(_positionId, _amount, _amountOfSwaps) {} catch {
         _failed = true;
       }
     }

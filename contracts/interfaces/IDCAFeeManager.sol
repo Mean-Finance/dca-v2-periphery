@@ -157,10 +157,15 @@ interface IDCAFeeManager is IGovernable {
    * @notice Takes a certain amount of the given tokens, and sets up DCA swaps for each of them.
    *         The given amounts can be distributed across different target tokens
    * @dev Can only be executed by the owner or allowed users
+   * @param hub The address of the DCA Hub
    * @param amounts Specific tokens and amounts to take from this contract and send to the hub
    * @param distribution How to distribute the source tokens across different target tokens
    */
-  function fillPositions(AmountToFill[] calldata amounts, TargetTokenShare[] calldata distribution) external;
+  function fillPositions(
+    IDCAHub hub,
+    AmountToFill[] calldata amounts,
+    TargetTokenShare[] calldata distribution
+  ) external;
 
   /**
    * @notice Takes list of position ids and terminates them. All swapped and unswapped balance is

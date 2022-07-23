@@ -110,6 +110,7 @@ contract('DCAFeeManager', () => {
 
     // Prepare data to send WBTC and USDC to Hub, to DCA for WETH
     const { data: fillData } = await DCAFeeManager.populateTransaction.fillPositions(
+      DCAHub.address,
       [
         { token: USDC.address, amount: usdcBalance.platformBalance, amountOfSwaps: 1 },
         { token: WBTC.address, amount: wbtcBalance.feeManagerBalance, amountOfSwaps: 1 },

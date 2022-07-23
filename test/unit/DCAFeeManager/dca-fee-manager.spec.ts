@@ -192,6 +192,7 @@ contract('DCAFeeManager', () => {
       given(async () => {
         erc20Token.allowance.returns(0);
         await DCAFeeManager.connect(governor).fillPositions(
+          DCAHub.address,
           [{ token: erc20Token.address, amount: FULL_AMOUNT, amountOfSwaps: AMOUNT_OF_SWAPS }],
           DISTRIBUTION
         );
@@ -204,6 +205,7 @@ contract('DCAFeeManager', () => {
       given(async () => {
         erc20Token.allowance.returns(1);
         await DCAFeeManager.connect(governor).fillPositions(
+          DCAHub.address,
           [{ token: erc20Token.address, amount: FULL_AMOUNT, amountOfSwaps: AMOUNT_OF_SWAPS }],
           DISTRIBUTION
         );
@@ -221,6 +223,7 @@ contract('DCAFeeManager', () => {
           DCAHub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'].revertsAtCall(0);
           DCAHub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'].returnsAtCall(1, POSITION_ID_TOKEN_B);
           await DCAFeeManager.connect(governor).fillPositions(
+            DCAHub.address,
             [{ token: erc20Token.address, amount: FULL_AMOUNT, amountOfSwaps: AMOUNT_OF_SWAPS }],
             DISTRIBUTION
           );
@@ -254,6 +257,7 @@ contract('DCAFeeManager', () => {
           DCAHub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'].returnsAtCall(0, POSITION_ID_TOKEN_A);
           DCAHub['deposit(address,address,uint256,uint32,uint32,address,(address,uint8[])[])'].returnsAtCall(1, POSITION_ID_TOKEN_B);
           await DCAFeeManager.connect(governor).fillPositions(
+            DCAHub.address,
             [{ token: erc20Token.address, amount: FULL_AMOUNT, amountOfSwaps: AMOUNT_OF_SWAPS }],
             DISTRIBUTION
           );
@@ -311,6 +315,7 @@ contract('DCAFeeManager', () => {
         given(async () => {
           DCAHub.increasePosition.revertsAtCall(0);
           await DCAFeeManager.connect(governor).fillPositions(
+            DCAHub.address,
             [{ token: erc20Token.address, amount: FULL_AMOUNT, amountOfSwaps: AMOUNT_OF_SWAPS }],
             DISTRIBUTION
           );
@@ -323,6 +328,7 @@ contract('DCAFeeManager', () => {
       describe('and increase works', () => {
         given(async () => {
           await DCAFeeManager.connect(governor).fillPositions(
+            DCAHub.address,
             [{ token: erc20Token.address, amount: FULL_AMOUNT, amountOfSwaps: AMOUNT_OF_SWAPS }],
             DISTRIBUTION
           );
@@ -341,7 +347,7 @@ contract('DCAFeeManager', () => {
 
     shouldOnlyBeExecutableByGovernorOrAllowed({
       funcAndSignature: 'fillPositions',
-      params: () => [[{ token: erc20Token.address, amount: FULL_AMOUNT, amountOfSwaps: AMOUNT_OF_SWAPS }], DISTRIBUTION],
+      params: () => [DCAHub.address, [{ token: erc20Token.address, amount: FULL_AMOUNT, amountOfSwaps: AMOUNT_OF_SWAPS }], DISTRIBUTION],
     });
   });
 
