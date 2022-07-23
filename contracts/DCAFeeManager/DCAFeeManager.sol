@@ -1,13 +1,16 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 pragma solidity >=0.8.7 <0.9.0;
 
+import '@openzeppelin/contracts/access/AccessControl.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '@openzeppelin/contracts/utils/Multicall.sol';
 import '../interfaces/IDCAFeeManager.sol';
-import '../utils/Governable.sol';
 
-contract DCAFeeManager is Governable, Multicall, IDCAFeeManager {
+contract DCAFeeManager is AccessControl, Multicall, IDCAFeeManager {
+  bytes32 public constant SUPER_ADMIN_ROLE = keccak256('SUPER_ADMIN_ROLE');
+  bytes32 public constant ADMIN_ROLE = keccak256('ADMIN_ROLE');
+
   using SafeERC20 for IERC20;
 
   /// @inheritdoc IDCAFeeManager
@@ -17,18 +20,26 @@ contract DCAFeeManager is Governable, Multicall, IDCAFeeManager {
   /// @inheritdoc IDCAFeeManager
   IWrappedProtocolToken public immutable wToken;
   /// @inheritdoc IDCAFeeManager
-  mapping(address => bool) public hasAccess;
-  /// @inheritdoc IDCAFeeManager
   mapping(bytes32 => uint256) public positions; // key(from, to) => position id
 
   mapping(address => uint256[]) internal _positionsWithToken; // token address => all positions with address as to
 
-  constructor(IWrappedProtocolToken _wToken, address _governor) Governable(_governor) {
+  constructor(
+    IWrappedProtocolToken _wToken,
+    address _superAdmin,
+    address[] memory _initialAdmins
+  ) {
     wToken = _wToken;
+    if (_superAdmin == address(0)) revert ZeroAddress();
+    _setupRole(SUPER_ADMIN_ROLE, _superAdmin);
+    _setRoleAdmin(ADMIN_ROLE, SUPER_ADMIN_ROLE);
+    for (uint256 i; i < _initialAdmins.length; i++) {
+      _setupRole(ADMIN_ROLE, _initialAdmins[i]);
+    }
   }
 
   /// @inheritdoc IDCAFeeManager
-  function unwrapWToken(uint256 _amount) external onlyOwnerOrAllowed {
+  function unwrapWToken(uint256 _amount) external onlyRole(ADMIN_ROLE) {
     wToken.withdraw(_amount);
   }
 
@@ -37,12 +48,12 @@ contract DCAFeeManager is Governable, Multicall, IDCAFeeManager {
     IDCAHub _hub,
     IDCAHub.AmountOfToken[] calldata _amountToWithdraw,
     address _recipient
-  ) external onlyOwnerOrAllowed {
+  ) external onlyRole(ADMIN_ROLE) {
     _hub.withdrawFromPlatformBalance(_amountToWithdraw, _recipient);
   }
 
   /// @inheritdoc IDCAFeeManager
-  function withdrawFromBalance(IDCAHub.AmountOfToken[] calldata _amountToWithdraw, address _recipient) external onlyOwnerOrAllowed {
+  function withdrawFromBalance(IDCAHub.AmountOfToken[] calldata _amountToWithdraw, address _recipient) external onlyRole(ADMIN_ROLE) {
     for (uint256 i; i < _amountToWithdraw.length; i++) {
       IERC20(_amountToWithdraw[i].token).safeTransfer(_recipient, _amountToWithdraw[i].amount);
     }
@@ -53,12 +64,12 @@ contract DCAFeeManager is Governable, Multicall, IDCAFeeManager {
     IDCAHub _hub,
     IDCAHub.PositionSet[] calldata _positionSets,
     address _recipient
-  ) external onlyOwnerOrAllowed {
+  ) external onlyRole(ADMIN_ROLE) {
     _hub.withdrawSwappedMany(_positionSets, _recipient);
   }
 
   /// @inheritdoc IDCAFeeManager
-  function withdrawProtocolToken(uint256 _amount, address payable _recipient) external onlyOwnerOrAllowed {
+  function withdrawProtocolToken(uint256 _amount, address payable _recipient) external onlyRole(ADMIN_ROLE) {
     _recipient.transfer(_amount);
   }
 
@@ -67,7 +78,7 @@ contract DCAFeeManager is Governable, Multicall, IDCAFeeManager {
     IDCAHub _hub,
     AmountToFill[] calldata _amounts,
     TargetTokenShare[] calldata _distribution
-  ) external onlyOwnerOrAllowed {
+  ) external onlyRole(ADMIN_ROLE) {
     for (uint256 i; i < _amounts.length; i++) {
       AmountToFill memory _amount = _amounts[i];
 
@@ -100,21 +111,13 @@ contract DCAFeeManager is Governable, Multicall, IDCAFeeManager {
     IDCAHub _hub,
     uint256[] calldata _positionIds,
     address _recipient
-  ) external onlyOwnerOrAllowed {
+  ) external onlyRole(ADMIN_ROLE) {
     for (uint256 i; i < _positionIds.length; i++) {
       uint256 _positionId = _positionIds[i];
       IDCAHubPositionHandler.UserPosition memory _position = _hub.userPosition(_positionId);
       _hub.terminate(_positionId, _recipient, _recipient);
       delete positions[getPositionKey(address(_position.from), address(_position.to))];
     }
-  }
-
-  /// @inheritdoc IDCAFeeManager
-  function setAccess(UserAccess[] calldata _access) external onlyGovernor {
-    for (uint256 i; i < _access.length; i++) {
-      hasAccess[_access[i].user] = _access[i].access;
-    }
-    emit NewAccess(_access);
   }
 
   /// @inheritdoc IDCAFeeManager
@@ -179,10 +182,5 @@ contract DCAFeeManager is Governable, Multicall, IDCAFeeManager {
         _failed = true;
       }
     }
-  }
-
-  modifier onlyOwnerOrAllowed() {
-    if (!hasAccess[msg.sender] && !isGovernor(msg.sender)) revert CallerMustBeOwnerOrHaveAccess();
-    _;
   }
 }

@@ -41,8 +41,8 @@ const deployFunction: DeployFunction = async function (hre: HardhatRuntimeEnviro
     contract: 'contracts/DCAFeeManager/DCAFeeManager.sol:DCAFeeManager',
     bytecode: DCAFeeManager__factory.bytecode,
     constructorArgs: {
-      types: ['address', 'address'],
-      values: [wProtocolToken, governor],
+      types: ['address', 'address', 'address[]'],
+      values: [wProtocolToken, governor, [governor]],
     },
     log: !process.env.TEST,
   });

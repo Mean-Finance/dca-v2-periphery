@@ -4,7 +4,11 @@ pragma solidity >=0.8.7 <0.9.0;
 import '../../DCAFeeManager/DCAFeeManager.sol';
 
 contract DCAFeeManagerMock is DCAFeeManager {
-  constructor(IWrappedProtocolToken _wToken, address _governor) DCAFeeManager(_wToken, _governor) {}
+  constructor(
+    IWrappedProtocolToken _wToken,
+    address _superAdmin,
+    address[] memory _initialAdmins
+  ) DCAFeeManager(_wToken, _superAdmin, _initialAdmins) {}
 
   function setPosition(
     address _from,

@@ -3,7 +3,6 @@ pragma solidity >=0.8.7 <0.9.0;
 
 import '@mean-finance/dca-v2-core/contracts/interfaces/IDCAHub.sol';
 import './IWrappedProtocolToken.sol';
-import './utils/IGovernable.sol';
 
 /**
  * @title DCA Fee Manager
@@ -12,17 +11,11 @@ import './utils/IGovernable.sol';
  *         or stablecoins. Allowed users will to withdraw fees as generated, or DCA them into tokens
  *         of their choosing
  */
-interface IDCAFeeManager is IGovernable {
+interface IDCAFeeManager {
   /// @notice Represents a share of a target token
   struct TargetTokenShare {
     address token;
     uint16 shares;
-  }
-
-  /// @notice Represents a user and the new access that should be assigned to them
-  struct UserAccess {
-    address user;
-    bool access;
   }
 
   /// @notice Represents how much to deposit to a position, for a specific token
@@ -49,14 +42,8 @@ interface IDCAFeeManager is IGovernable {
     uint256 remaining;
   }
 
-  /// @notice Thrown when a user tries to execute a permissioned action without the access to do so
-  error CallerMustBeOwnerOrHaveAccess();
-
-  /**
-   * @notice Emitted when access is modified for some users
-   * @param access The modified users and their new access
-   */
-  event NewAccess(UserAccess[] access);
+  /// @notice Thrown when one of the parameters is a zero address
+  error ZeroAddress();
 
   /**
    * @notice The contract's owner and other allowed users can specify the target tokens that the fees
@@ -81,13 +68,6 @@ interface IDCAFeeManager is IGovernable {
    * @return The address for the wToken
    */
   function wToken() external view returns (IWrappedProtocolToken);
-
-  /**
-   * @notice Returns whether the given user has access to fill positions or execute withdraws
-   * @param user The user to check access for
-   * @return Whether the given user has access
-   */
-  function hasAccess(address user) external view returns (bool);
 
   /**
    * @notice Returns the position id for a given (from, to) pair
@@ -174,13 +154,6 @@ interface IDCAFeeManager is IGovernable {
     uint256[] calldata positionIds,
     address recipient
   ) external;
-
-  /**
-   * @notice Gives or takes access to permissioned actions from users
-   * @dev Only the contract owner can execute this action
-   * @param access The users to affect, and how to affect them
-   */
-  function setAccess(UserAccess[] calldata access) external;
 
   /**
    * @notice Returns how much is available for withdraw, for the given tokens
